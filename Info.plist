@@ -18,7 +18,9 @@
 	<string>APPL</string>
 	<key>UIRequiresPersistentWiFi</key>
 	<true/>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
 	<key>CFBundleVersion</key>
-	<string>1.5</string>
+	<string>1.7</string>
 </dict>
 </plist>

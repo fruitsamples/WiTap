@@ -1,57 +1,54 @@
 /*
-
-File: AppController.m
-Abstract: UIApplication's delegate class, the central controller of the
-application.
-
-Version: 1.5
-
-Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple Inc.
-("Apple") in consideration of your agreement to the following terms, and your
-use, installation, modification or redistribution of this Apple software
-constitutes acceptance of these terms.  If you do not agree with these terms,
-please do not use, install, modify or redistribute this Apple software.
-
-In consideration of your agreement to abide by the following terms, and subject
-to these terms, Apple grants you a personal, non-exclusive license, under
-Apple's copyrights in this original Apple software (the "Apple Software"), to
-use, reproduce, modify and redistribute the Apple Software, with or without
-modifications, in source and/or binary forms; provided that if you redistribute
-the Apple Software in its entirety and without modifications, you must retain
-this notice and the following text and disclaimers in all such redistributions
-of the Apple Software.
-Neither the name, trademarks, service marks or logos of Apple Inc. may be used
-to endorse or promote products derived from the Apple Software without specific
-prior written permission from Apple.  Except as expressly stated in this notice,
-no other rights or licenses, express or implied, are granted by Apple herein,
-including but not limited to any patent rights that may be infringed by your
-derivative works or by other works in which the Apple Software may be
-incorporated.
-
-The Apple Software is provided by Apple on an "AS IS" basis.  APPLE MAKES NO
-WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION THE IMPLIED
-WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS FOR A PARTICULAR
-PURPOSE, REGARDING THE APPLE SOFTWARE OR ITS USE AND OPERATION ALONE OR IN
-COMBINATION WITH YOUR PRODUCTS.
-
-IN NO EVENT SHALL APPLE BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL OR
-CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
-GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
-ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION, MODIFICATION AND/OR
-DISTRIBUTION OF THE APPLE SOFTWARE, HOWEVER CAUSED AND WHETHER UNDER THEORY OF
-CONTRACT, TORT (INCLUDING NEGLIGENCE), STRICT LIABILITY OR OTHERWISE, EVEN IF
-APPLE HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-Copyright (C) 2008 Apple Inc. All Rights Reserved.
-
-*/
+     File: AppController.m
+ Abstract: UIApplication's delegate class, the central controller of the application.
+  Version: 1.7
+ 
+ Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple
+ Inc. ("Apple") in consideration of your agreement to the following
+ terms, and your use, installation, modification or redistribution of
+ this Apple software constitutes acceptance of these terms.  If you do
+ not agree with these terms, please do not use, install, modify or
+ redistribute this Apple software.
+ 
+ In consideration of your agreement to abide by the following terms, and
+ subject to these terms, Apple grants you a personal, non-exclusive
+ license, under Apple's copyrights in this original Apple software (the
+ "Apple Software"), to use, reproduce, modify and redistribute the Apple
+ Software, with or without modifications, in source and/or binary forms;
+ provided that if you redistribute the Apple Software in its entirety and
+ without modifications, you must retain this notice and the following
+ text and disclaimers in all such redistributions of the Apple Software.
+ Neither the name, trademarks, service marks or logos of Apple Inc. may
+ be used to endorse or promote products derived from the Apple Software
+ without specific prior written permission from Apple.  Except as
+ expressly stated in this notice, no other rights or licenses, express or
+ implied, are granted by Apple herein, including but not limited to any
+ patent rights that may be infringed by your derivative works or by other
+ works in which the Apple Software may be incorporated.
+ 
+ The Apple Software is provided by Apple on an "AS IS" basis.  APPLE
+ MAKES NO WARRANTIES, EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION
+ THE IMPLIED WARRANTIES OF NON-INFRINGEMENT, MERCHANTABILITY AND FITNESS
+ FOR A PARTICULAR PURPOSE, REGARDING THE APPLE SOFTWARE OR ITS USE AND
+ OPERATION ALONE OR IN COMBINATION WITH YOUR PRODUCTS.
+ 
+ IN NO EVENT SHALL APPLE BE LIABLE FOR ANY SPECIAL, INDIRECT, INCIDENTAL
+ OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ INTERRUPTION) ARISING IN ANY WAY OUT OF THE USE, REPRODUCTION,
+ MODIFICATION AND/OR DISTRIBUTION OF THE APPLE SOFTWARE, HOWEVER CAUSED
+ AND WHETHER UNDER THEORY OF CONTRACT, TORT (INCLUDING NEGLIGENCE),
+ STRICT LIABILITY OR OTHERWISE, EVEN IF APPLE HAS BEEN ADVISED OF THE
+ POSSIBILITY OF SUCH DAMAGE.
+ 
+ Copyright (C) 2009 Apple Inc. All Rights Reserved.
+ 
+ */
 
 #import "AppController.h"
 #import "Picker.h"
 
-//CONSTANTS:
-
-#define kNumPads			3
+#define kNumPads 3
 
 // The Bonjour application protocol, which must:
 // 1) be no longer than 14 characters
@@ -63,30 +60,27 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 #define kGameIdentifier		@"witap"
 
 
-//INTERFACES:
-
 @interface AppController ()
 - (void) setup;
-- (void) presentPicker:(NSString*)name;
+- (void) presentPicker:(NSString *)name;
 @end
 
-//CLASS IMPLEMENTATIONS:
 
+#pragma mark -
 @implementation AppController
 
-- (void) _showAlert:(NSString*)title
+- (void) _showAlert:(NSString *)title
 {
-	UIAlertView* alertView = [[UIAlertView alloc] initWithTitle:title message:@"Check your networking configuration." delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil];
+	UIAlertView *alertView = [[UIAlertView alloc] initWithTitle:title message:@"Check your networking configuration." delegate:self cancelButtonTitle:@"OK" otherButtonTitles:nil];
 	[alertView show];
 	[alertView release];
 }
 
-- (void) applicationDidFinishLaunching:(UIApplication*)application
+- (void) applicationDidFinishLaunching:(UIApplication *)application
 {
-	CGRect					rect;
-	UIView*					view;
-	NSUInteger				x,
-							y;
+	CGRect		rect;
+	UIView*		view;
+	NSUInteger	x, y;
 	
 	//Create a full-screen window
 	_window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
@@ -145,7 +139,7 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 	
 	_server = [TCPServer new];
 	[_server setDelegate:self];
-	NSError* error;
+	NSError *error;
 	if(_server == nil || ![_server start:&error]) {
 		NSLog(@"Failed creating server: %@", error);
 		[self _showAlert:@"Failed creating server"];
@@ -165,7 +159,7 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 // This way, other players can browse for and connect to this game.
 // Note that this may be called while the alert is already being displayed, as
 // Bonjour may detect a name conflict and rename dynamically.
-- (void) presentPicker:(NSString*)name {
+- (void) presentPicker:(NSString *)name {
 	if (!_picker) {
 		_picker = [[Picker alloc] initWithFrame:[[UIScreen mainScreen] applicationFrame] type:[TCPServer bonjourTypeFromIdentifier:kGameIdentifier]];
 		_picker.delegate = self;
@@ -185,7 +179,7 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 }
 
 // If we display an error or an alert that the remote disconnected, handle dismissal and return to setup
-- (void) alertView:(UIAlertView*)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
+- (void) alertView:(UIAlertView *)alertView clickedButtonAtIndex:(NSInteger)buttonIndex
 {
 	[self setup];
 }
@@ -197,12 +191,12 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 			[self _showAlert:@"Failed sending data to peer"];
 }
 
-- (void) activateView:(TapView*)view
+- (void) activateView:(TapView *)view
 {
 	[self send:[view tag] | 0x80];
 }
 
-- (void) deactivateView:(TapView*)view
+- (void) deactivateView:(TapView *)view
 {
 	[self send:[view tag] & 0x7f];
 }
@@ -217,13 +211,14 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 	[_outStream open];
 }
 
-- (void) browserViewController:(BrowserViewController*)bvc didResolveInstance:(NSNetService*)netService
+- (void) browserViewController:(BrowserViewController *)bvc didResolveInstance:(NSNetService *)netService
 {
 	if (!netService) {
 		[self setup];
 		return;
 	}
 
+	// note the following method returns _inStream and _outStream with a retain count that the caller must eventually release
 	if (![netService getInputStream:&_inStream outputStream:&_outStream]) {
 		[self _showAlert:@"Failed connecting to server"];
 		return;
@@ -234,11 +229,13 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 
 @end
 
+
+#pragma mark -
 @implementation AppController (NSStreamDelegate)
 
-- (void) stream:(NSStream*)stream handleEvent:(NSStreamEvent)eventCode
+- (void) stream:(NSStream *)stream handleEvent:(NSStreamEvent)eventCode
 {
-	UIAlertView* alertView;
+	UIAlertView *alertView;
 	switch(eventCode) {
 		case NSStreamEventOpenCompleted:
 		{
@@ -271,18 +268,25 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 				} else {
 					//We received a remote tap update, forward it to the appropriate view
 					if(b & 0x80)
-						[(TapView*)[_window viewWithTag:b & 0x7f] touchDown:YES];
+						[(TapView *)[_window viewWithTag:b & 0x7f] touchDown:YES];
 					else
-						[(TapView*)[_window viewWithTag:b] touchUp:YES];
+						[(TapView *)[_window viewWithTag:b] touchUp:YES];
 				}
 			}
 			break;
 		}
+		case NSStreamEventErrorOccurred:
+		{
+			NSLog(@"%s", _cmd);
+			[self _showAlert:@"Error encountered on stream!"];			
+			break;
+		}
+			
 		case NSStreamEventEndEncountered:
 		{
-			NSArray*				array = [_window subviews];
-			TapView*				view;
-			UIAlertView*			alertView;
+			NSArray		*array = [_window subviews];
+			TapView		*view;
+			UIAlertView	*alertView;
 			
 			NSLog(@"%s", _cmd);
 			
@@ -301,15 +305,17 @@ Copyright (C) 2008 Apple Inc. All Rights Reserved.
 
 @end
 
+
+#pragma mark -
 @implementation AppController (TCPServerDelegate)
 
-- (void) serverDidEnableBonjour:(TCPServer*)server withName:(NSString*)string
+- (void) serverDidEnableBonjour:(TCPServer *)server withName:(NSString *)string
 {
 	NSLog(@"%s", _cmd);
 	[self presentPicker:string];
 }
 
-- (void)didAcceptConnectionForServer:(TCPServer*)server inputStream:(NSInputStream *)istr outputStream:(NSOutputStream *)ostr
+- (void)didAcceptConnectionForServer:(TCPServer *)server inputStream:(NSInputStream *)istr outputStream:(NSOutputStream *)ostr
 {
 	if (_inStream || _outStream || server != _server)
 		return;
