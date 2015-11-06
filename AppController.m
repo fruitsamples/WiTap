@@ -1,7 +1,7 @@
 /*
      File: AppController.m
  Abstract: UIApplication's delegate class, the central controller of the application.
-  Version: 1.7
+  Version: 1.8
  
  Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple
  Inc. ("Apple") in consideration of your agreement to the following
@@ -41,7 +41,7 @@
  STRICT LIABILITY OR OTHERWISE, EVEN IF APPLE HAS BEEN ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
  
- Copyright (C) 2009 Apple Inc. All Rights Reserved.
+ Copyright (C) 2010 Apple Inc. All Rights Reserved.
  
  */
 
@@ -139,9 +139,13 @@
 	
 	_server = [TCPServer new];
 	[_server setDelegate:self];
-	NSError *error;
+	NSError *error = nil;
 	if(_server == nil || ![_server start:&error]) {
+		if (error == nil) {
+			NSLog(@"Failed creating server: Server instance is nil");
+		} else {
 		NSLog(@"Failed creating server: %@", error);
+		}
 		[self _showAlert:@"Failed creating server"];
 		return;
 	}
@@ -260,9 +264,9 @@
 		{
 			if (stream == _inStream) {
 				uint8_t b;
-				unsigned int len = 0;
+				int len = 0;
 				len = [_inStream read:&b maxLength:sizeof(uint8_t)];
-				if(!len) {
+				if(len <= 0) {
 					if ([stream streamStatus] != NSStreamStatusAtEnd)
 						[self _showAlert:@"Failed reading data from peer"];
 				} else {

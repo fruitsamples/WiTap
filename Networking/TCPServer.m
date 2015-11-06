@@ -1,7 +1,7 @@
 /*
      File: TCPServer.m
  Abstract: A TCP server that listens on an arbitrary port.
-  Version: 1.7
+  Version: 1.8
  
  Disclaimer: IMPORTANT:  This Apple software is supplied to you by Apple
  Inc. ("Apple") in consideration of your agreement to the following
@@ -41,7 +41,7 @@
  STRICT LIABILITY OR OTHERWISE, EVEN IF APPLE HAS BEEN ADVISED OF THE
  POSSIBILITY OF SUCH DAMAGE.
  
- Copyright (C) 2009 Apple Inc. All Rights Reserved.
+ Copyright (C) 2010 Apple Inc. All Rights Reserved.
  
  */
 
@@ -111,49 +111,90 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
 }
 
 - (BOOL)start:(NSError **)error {
-    CFSocketContext socketCtxt = {0, self, NULL, NULL, NULL};
-    _ipv4socket = CFSocketCreate(kCFAllocatorDefault, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, (CFSocketCallBack)&TCPServerAcceptCallBack, &socketCtxt);
+
+    CFSocketContext socketCtxt = {0, self, NULL, NULL, NULL};	
+
+	// Start by trying to do everything with IPv6.  This will work for both IPv4 and IPv6 clients 
+    // via the miracle of mapped IPv4 addresses.	
+
+    witap_socket = CFSocketCreate(kCFAllocatorDefault, PF_INET6, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, (CFSocketCallBack)&TCPServerAcceptCallBack, &socketCtxt);
 	
-    if (NULL == _ipv4socket) {
+	if (witap_socket != NULL)	// the socket was created successfully
+	{
+		protocolFamily = PF_INET6;
+	} else // there was an error creating the IPv6 socket - could be running under iOS 3.x
+	{
+		witap_socket = CFSocketCreate(kCFAllocatorDefault, PF_INET, SOCK_STREAM, IPPROTO_TCP, kCFSocketAcceptCallBack, (CFSocketCallBack)&TCPServerAcceptCallBack, &socketCtxt);
+		if (witap_socket != NULL)
+		{
+			protocolFamily = PF_INET;
+		}
+	}
+
+    if (NULL == witap_socket) {
         if (error) *error = [[NSError alloc] initWithDomain:TCPServerErrorDomain code:kTCPServerNoSocketsAvailable userInfo:nil];
-        if (_ipv4socket) CFRelease(_ipv4socket);
-        _ipv4socket = NULL;
+        if (witap_socket) CFRelease(witap_socket);
+        witap_socket = NULL;
         return NO;
     }
 	
 	
     int yes = 1;
-    setsockopt(CFSocketGetNative(_ipv4socket), SOL_SOCKET, SO_REUSEADDR, (void *)&yes, sizeof(yes));
+    setsockopt(CFSocketGetNative(witap_socket), SOL_SOCKET, SO_REUSEADDR, (void *)&yes, sizeof(yes));
 	
-    // set up the IPv4 endpoint; use port 0, so the kernel will choose an arbitrary port for us, which will be advertised using Bonjour
-    struct sockaddr_in addr4;
-    memset(&addr4, 0, sizeof(addr4));
-    addr4.sin_len = sizeof(addr4);
-    addr4.sin_family = AF_INET;
-    addr4.sin_port = 0;
-    addr4.sin_addr.s_addr = htonl(INADDR_ANY);
-    NSData *address4 = [NSData dataWithBytes:&addr4 length:sizeof(addr4)];
-	
-    if (kCFSocketSuccess != CFSocketSetAddress(_ipv4socket, (CFDataRef)address4)) {
-        if (error) *error = [[NSError alloc] initWithDomain:TCPServerErrorDomain code:kTCPServerCouldNotBindToIPv4Address userInfo:nil];
-        if (_ipv4socket) CFRelease(_ipv4socket);
-        _ipv4socket = NULL;
-        return NO;
-    }
-    
-	// now that the binding was successful, we get the port number 
-	// -- we will need it for the NSNetService
-	NSData *addr = [(NSData *)CFSocketCopyAddress(_ipv4socket) autorelease];
-	memcpy(&addr4, [addr bytes], [addr length]);
-	self.port = ntohs(addr4.sin_port);
-	
+	// set up the IP endpoint; use port 0, so the kernel will choose an arbitrary port for us, which will be advertised using Bonjour
+	if (protocolFamily == PF_INET6)
+	{
+		struct sockaddr_in6 addr6;
+		memset(&addr6, 0, sizeof(addr6));
+		addr6.sin6_len = sizeof(addr6);
+		addr6.sin6_family = AF_INET6;
+		addr6.sin6_port = 0;
+		addr6.sin6_flowinfo = 0;
+		addr6.sin6_addr = in6addr_any;
+		NSData *address6 = [NSData dataWithBytes:&addr6 length:sizeof(addr6)];
+		
+		if (kCFSocketSuccess != CFSocketSetAddress(witap_socket, (CFDataRef)address6)) {
+			if (error) *error = [[NSError alloc] initWithDomain:TCPServerErrorDomain code:kTCPServerCouldNotBindToIPv6Address userInfo:nil];
+			if (witap_socket) CFRelease(witap_socket);
+			witap_socket = NULL;
+			return NO;
+		}
+		
+		// now that the binding was successful, we get the port number 
+		// -- we will need it for the NSNetService
+		NSData *addr = [(NSData *)CFSocketCopyAddress(witap_socket) autorelease];
+		memcpy(&addr6, [addr bytes], [addr length]);
+		self.port = ntohs(addr6.sin6_port);
+		
+	} else {
+		struct sockaddr_in addr4;
+		memset(&addr4, 0, sizeof(addr4));
+		addr4.sin_len = sizeof(addr4);
+		addr4.sin_family = AF_INET;
+		addr4.sin_port = 0;
+		addr4.sin_addr.s_addr = htonl(INADDR_ANY);
+		NSData *address4 = [NSData dataWithBytes:&addr4 length:sizeof(addr4)];
+		
+		if (kCFSocketSuccess != CFSocketSetAddress(witap_socket, (CFDataRef)address4)) {
+			if (error) *error = [[NSError alloc] initWithDomain:TCPServerErrorDomain code:kTCPServerCouldNotBindToIPv4Address userInfo:nil];
+			if (witap_socket) CFRelease(witap_socket);
+			witap_socket = NULL;
+			return NO;
+		}
+		
+		// now that the binding was successful, we get the port number 
+		// -- we will need it for the NSNetService
+		NSData *addr = [(NSData *)CFSocketCopyAddress(witap_socket) autorelease];
+		memcpy(&addr4, [addr bytes], [addr length]);
+		self.port = ntohs(addr4.sin_port);
+	}
 	
     // set up the run loop sources for the sockets
     CFRunLoopRef cfrl = CFRunLoopGetCurrent();
-    CFRunLoopSourceRef source4 = CFSocketCreateRunLoopSource(kCFAllocatorDefault, _ipv4socket, 0);
-    CFRunLoopAddSource(cfrl, source4, kCFRunLoopCommonModes);
-    CFRelease(source4);
-	
+    CFRunLoopSourceRef source = CFSocketCreateRunLoopSource(kCFAllocatorDefault, witap_socket, 0);
+    CFRunLoopAddSource(cfrl, source, kCFRunLoopCommonModes);
+    CFRelease(source);
 	
     return YES;
 }
@@ -161,10 +202,10 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
 - (BOOL)stop {
     [self disableBonjour];
 
-	if (_ipv4socket) {
-		CFSocketInvalidate(_ipv4socket);
-		CFRelease(_ipv4socket);
-		_ipv4socket = NULL;
+	if (witap_socket) {
+		CFSocketInvalidate(witap_socket);
+		CFRelease(witap_socket);
+		witap_socket = NULL;
 	}
 	
 	
@@ -178,7 +219,7 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
 	if(![name length])
 		name = @""; //Will use default Bonjour name, e.g. the name assigned to the device in iTunes
 	
-	if(!protocol || ![protocol length] || _ipv4socket == NULL)
+	if(!protocol || ![protocol length] || witap_socket == NULL)
 		return NO;
 	
 
@@ -208,7 +249,6 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
 
 - (void)netService:(NSNetService *)sender didNotPublish:(NSDictionary *)errorDict
 {
-	[super netService:sender didNotPublish:errorDict];
 	if (self.delegate && [self.delegate respondsToSelector:@selector(server:didNotEnableBonjour:)])
 		[self.delegate server:self didNotEnableBonjour:errorDict];
 }
@@ -216,6 +256,7 @@ static void TCPServerAcceptCallBack(CFSocketRef socket, CFSocketCallBackType typ
 - (void) disableBonjour
 {
 	if (self.netService) {
+		NSLog(@"about to call NetService:stop");
 		[self.netService stop];
 		[self.netService removeFromRunLoop:[NSRunLoop currentRunLoop] forMode:NSRunLoopCommonModes];
 		self.netService = nil;
